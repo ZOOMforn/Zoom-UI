@@ -1,309 +1,184 @@
-local Players = game:GetService("Players")
+--[[
+FiveM Style GUI Library for Roblox (Theme: Purple/Black/White + Draggable)
+Usage:
+local gui = loadstring(game:HttpGet("URL_AQUI"))()
+local tab = gui:CreateTab("Aimbot")
+tab:AddToggle("Ativar Aimbot", function(state) print(state) end)
+tab:AddSlider("FOV", 10, 120, function(val) print(val) end)
+tab:AddDropdown("Modo", {"Silent", "Legit", "Rage"}, function(opt) print(opt) end)
+--]]
+
+local Library = {}
 local CoreGui = game:GetService("CoreGui")
-local LocalPlayer = Players.LocalPlayer
-local Mouse = LocalPlayer:GetMouse()
+local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
+local Player = Players.LocalPlayer
+local Mouse = Player:GetMouse()
+local UIS = game:GetService("UserInputService")
 
-local function CreateInstance(class, props)
-	local obj = Instance.new(class)
-	for i, v in pairs(props) do
-		obj[i] = v
-	end
-	return obj
+if CoreGui:FindFirstChild("FiveM_GUI") then
+    CoreGui.FiveM_GUI:Destroy()
 end
 
-local BonitaUI = {}
+local GUI = Instance.new("ScreenGui", CoreGui)
+GUI.Name = "FiveM_GUI"
+GUI.ResetOnSpawn = false
 
-function BonitaUI.CreateWindow(title)
-	local screenGui = CreateInstance("ScreenGui", {
-		Name = "BonitaUI",
-		ResetOnSpawn = false,
-		IgnoreGuiInset = true,
-		Enabled = false,
-		Parent = CoreGui
-	})
+local Main = Instance.new("Frame", GUI)
+Main.Size = UDim2.new(0, 450, 0, 300)
+Main.Position = UDim2.new(0.5, -225, 0.5, -150)
+Main.BackgroundColor3 = Color3.fromRGB(25, 0, 40)
+Main.Active = true
+Main.Draggable = true
+Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 8)
 
-	local mainFrame = CreateInstance("Frame", {
-		Name = "MainFrame",
-		Size = UDim2.new(0, 500, 0, 400),
-		Position = UDim2.new(0.5, -250, 0.5, -200),
-		BackgroundColor3 = Color3.fromRGB(25, 25, 25),
-		BorderSizePixel = 0,
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Parent = screenGui
-	})
+local Title = Instance.new("TextLabel", Main)
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.Text = "FiveM GUI"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.BackgroundTransparency = 1
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 20
 
-	CreateInstance("UICorner", { CornerRadius = UDim.new(0, 10), Parent = mainFrame })
+local TabButtons = Instance.new("Frame", Main)
+TabButtons.Size = UDim2.new(0, 100, 1, -30)
+TabButtons.Position = UDim2.new(0, 0, 0, 30)
+TabButtons.BackgroundColor3 = Color3.fromRGB(35, 0, 55)
+Instance.new("UICorner", TabButtons).CornerRadius = UDim.new(0, 6)
 
-	local titleLabel = CreateInstance("TextLabel", {
-		Text = title or "Bonita UI",
-		Size = UDim2.new(1, 0, 0, 40),
-		BackgroundColor3 = Color3.fromRGB(30, 30, 30),
-		TextColor3 = Color3.fromRGB(255, 255, 255),
-		TextSize = 20,
-		Font = Enum.Font.GothamBold,
-		Parent = mainFrame
-	})
+local Content = Instance.new("Frame", Main)
+Content.Size = UDim2.new(1, -100, 1, -30)
+Content.Position = UDim2.new(0, 100, 0, 30)
+Content.BackgroundColor3 = Color3.fromRGB(40, 0, 60)
+Instance.new("UICorner", Content).CornerRadius = UDim.new(0, 6)
 
-	CreateInstance("UICorner", { CornerRadius = UDim.new(0, 6), Parent = titleLabel })
+local Tabs = {}
 
-	local tabHolder = CreateInstance("Frame", {
-		Name = "TabHolder",
-		Size = UDim2.new(0, 120, 1, -40),
-		Position = UDim2.new(0, 0, 0, 40),
-		BackgroundColor3 = Color3.fromRGB(35, 35, 35),
-		Parent = mainFrame
-	})
+function Library:CreateTab(name)
+    local tabBtn = Instance.new("TextButton", TabButtons)
+    tabBtn.Size = UDim2.new(1, 0, 0, 30)
+    tabBtn.Text = name
+    tabBtn.BackgroundColor3 = Color3.fromRGB(60, 0, 90)
+    tabBtn.Font = Enum.Font.Gotham
+    tabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    tabBtn.TextSize = 14
+    Instance.new("UICorner", tabBtn).CornerRadius = UDim.new(0, 6)
 
-	local tabButtons = {}
+    local tabFrame = Instance.new("Frame", Content)
+    tabFrame.Size = UDim2.new(1, 0, 1, 0)
+    tabFrame.Visible = false
+    tabFrame.BackgroundTransparency = 1
 
-	local contentFrame = CreateInstance("Frame", {
-		Name = "ContentFrame",
-		Size = UDim2.new(1, -120, 1, -40),
-		Position = UDim2.new(0, 120, 0, 40),
-		BackgroundColor3 = Color3.fromRGB(40, 40, 40),
-		Parent = mainFrame
-	})
+    local layout = Instance.new("UIListLayout", tabFrame)
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.Padding = UDim.new(0, 5)
 
-	function BonitaUI.AddTab(name)
-		local tabFrame = CreateInstance("ScrollingFrame", {
-			Name = name,
-			Size = UDim2.new(1, 0, 1, 0),
-			CanvasSize = UDim2.new(0, 0, 0, 0),
-			BackgroundTransparency = 1,
-			ScrollBarThickness = 6,
-			Visible = false,
-			Parent = contentFrame
-		})
+    tabBtn.MouseButton1Click:Connect(function()
+        for _, tab in pairs(Tabs) do tab.Frame.Visible = false end
+        tabFrame.Visible = true
+    end)
 
-		local tabButton = CreateInstance("TextButton", {
-			Text = name,
-			Size = UDim2.new(1, 0, 0, 30),
-			BackgroundColor3 = Color3.fromRGB(45, 45, 45),
-			TextColor3 = Color3.fromRGB(255, 255, 255),
-			Font = Enum.Font.Gotham,
-			TextSize = 14,
-			Parent = tabHolder
-		})
+    table.insert(Tabs, {Button = tabBtn, Frame = tabFrame})
+    if #Tabs == 1 then tabFrame.Visible = true end
 
-		CreateInstance("UIListLayout", {
-			Padding = UDim.new(0, 5),
-			SortOrder = Enum.SortOrder.LayoutOrder,
-			Parent = tabHolder
-		})
+    local tabAPI = {}
 
-		local function ShowTab()
-			for _, f in pairs(contentFrame:GetChildren()) do
-				if f:IsA("ScrollingFrame") then f.Visible = false end
-			end
-			tabFrame.Visible = true
-		end
+    function tabAPI:AddToggle(text, callback)
+        local btn = Instance.new("TextButton", tabFrame)
+        btn.Size = UDim2.new(1, -10, 0, 30)
+        btn.BackgroundColor3 = Color3.fromRGB(80, 0, 120)
+        btn.Text = text .. ": OFF"
+        btn.Font = Enum.Font.Gotham
+        btn.TextColor3 = Color3.new(1,1,1)
+        btn.TextSize = 14
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
 
-		tabButton.MouseButton1Click:Connect(ShowTab)
-		if #tabButtons == 0 then ShowTab() end
-		table.insert(tabButtons, tabButton)
+        local state = false
+        btn.MouseButton1Click:Connect(function()
+            state = not state
+            btn.Text = text .. ": " .. (state and "ON" or "OFF")
+            callback(state)
+        end)
+    end
 
-		local sectionLayout = CreateInstance("UIListLayout", {
-			Padding = UDim.new(0, 6),
-			SortOrder = Enum.SortOrder.LayoutOrder,
-			Parent = tabFrame
-		})
+    function tabAPI:AddSlider(text, min, max, callback)
+        local holder = Instance.new("Frame", tabFrame)
+        holder.Size = UDim2.new(1, -10, 0, 50)
+        holder.BackgroundTransparency = 1
 
-		return {
-			AddSection = function(sectionTitle)
-				local section = CreateInstance("Frame", {
-					Size = UDim2.new(1, -10, 0, 0),
-					BackgroundColor3 = Color3.fromRGB(50, 50, 50),
-					BorderSizePixel = 0,
-					Parent = tabFrame,
-					AutomaticSize = Enum.AutomaticSize.Y
-				})
-				CreateInstance("UICorner", { CornerRadius = UDim.new(0, 6), Parent = section })
-				CreateInstance("UIPadding", { PaddingTop = UDim.new(0, 6), PaddingBottom = UDim.new(0, 6), PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10), Parent = section })
+        local label = Instance.new("TextLabel", holder)
+        label.Size = UDim2.new(1, 0, 0, 20)
+        label.Text = text .. ": " .. min
+        label.Font = Enum.Font.Gotham
+        label.TextColor3 = Color3.new(1,1,1)
+        label.TextSize = 14
+        label.BackgroundTransparency = 1
 
-				local layout = CreateInstance("UIListLayout", {
-					Padding = UDim.new(0, 6),
-					SortOrder = Enum.SortOrder.LayoutOrder,
-					Parent = section
-				})
+        local bar = Instance.new("TextButton", holder)
+        bar.Size = UDim2.new(1, 0, 0, 20)
+        bar.Position = UDim2.new(0, 0, 0, 25)
+        bar.BackgroundColor3 = Color3.fromRGB(80, 0, 120)
+        bar.Text = ""
+        Instance.new("UICorner", bar).CornerRadius = UDim.new(0, 6)
 
-				CreateInstance("TextLabel", {
-					Text = sectionTitle,
-					Size = UDim2.new(1, 0, 0, 20),
-					BackgroundTransparency = 1,
-					TextColor3 = Color3.fromRGB(255, 255, 255),
-					TextSize = 16,
-					Font = Enum.Font.GothamBold,
-					Parent = section
-				})
+        local val = min
+        bar.MouseButton1Down:Connect(function()
+            local conn
+            conn = game:GetService("RunService").RenderStepped:Connect(function()
+                local rel = math.clamp(Mouse.X - bar.AbsolutePosition.X, 0, bar.AbsoluteSize.X)
+                val = math.floor(min + (max - min) * (rel / bar.AbsoluteSize.X))
+                label.Text = text .. ": " .. val
+                callback(val)
+            end)
+            UIS.InputEnded:Wait()
+            conn:Disconnect()
+        end)
+    end
 
-				return {
-					AddButton = function(text, callback)
-						local button = CreateInstance("TextButton", {
-							Text = text,
-							Size = UDim2.new(1, 0, 0, 30),
-							BackgroundColor3 = Color3.fromRGB(60, 60, 60),
-							TextColor3 = Color3.fromRGB(255, 255, 255),
-							Font = Enum.Font.Gotham,
-							TextSize = 14,
-							Parent = section
-						})
-						CreateInstance("UICorner", { CornerRadius = UDim.new(0, 6), Parent = button })
-						button.MouseButton1Click:Connect(callback)
-					end,
+    function tabAPI:AddDropdown(text, options, callback)
+        local drop = Instance.new("TextButton", tabFrame)
+        drop.Size = UDim2.new(1, -10, 0, 30)
+        drop.BackgroundColor3 = Color3.fromRGB(80, 0, 120)
+        drop.Text = text .. " ▼"
+        drop.Font = Enum.Font.Gotham
+        drop.TextColor3 = Color3.new(1,1,1)
+        drop.TextSize = 14
+        Instance.new("UICorner", drop).CornerRadius = UDim.new(0, 6)
 
-					AddToggle = function(text, default, callback)
-						local toggle = CreateInstance("TextButton", {
-							Text = text .. ": " .. (default and "ON" or "OFF"),
-							Size = UDim2.new(1, 0, 0, 30),
-							BackgroundColor3 = Color3.fromRGB(60, 60, 60),
-							TextColor3 = Color3.fromRGB(255, 255, 255),
-							Font = Enum.Font.Gotham,
-							TextSize = 14,
-							Parent = section
-						})
-						CreateInstance("UICorner", { CornerRadius = UDim.new(0, 6), Parent = toggle })
-						local state = default
-						toggle.MouseButton1Click:Connect(function()
-							state = not state
-							toggle.Text = text .. ": " .. (state and "ON" or "OFF")
-							if callback then callback(state) end
-						end)
-					end,
+        local open = false
+        local dropdownItems = Instance.new("Frame", tabFrame)
+        dropdownItems.Size = UDim2.new(1, -10, 0, #options * 30)
+        dropdownItems.Visible = false
+        dropdownItems.BackgroundTransparency = 1
 
-					AddSlider = function(text, min, max, default, callback)
-						local sliderLabel = CreateInstance("TextLabel", {
-							Text = text .. ": " .. tostring(default),
-							Size = UDim2.new(1, 0, 0, 20),
-							BackgroundTransparency = 1,
-							TextColor3 = Color3.fromRGB(255, 255, 255),
-							Font = Enum.Font.Gotham,
-							TextSize = 14,
-							Parent = section
-						})
+        local layout = Instance.new("UIListLayout", dropdownItems)
+        layout.SortOrder = Enum.SortOrder.LayoutOrder
+        layout.Padding = UDim.new(0, 2)
 
-						local slider = CreateInstance("TextButton", {
-							Text = "",
-							Size = UDim2.new(1, 0, 0, 20),
-							BackgroundColor3 = Color3.fromRGB(80, 80, 80),
-							Parent = section
-						})
-						CreateInstance("UICorner", { CornerRadius = UDim.new(0, 6), Parent = slider })
+        for _, opt in ipairs(options) do
+            local item = Instance.new("TextButton", dropdownItems)
+            item.Size = UDim2.new(1, 0, 0, 30)
+            item.Text = opt
+            item.Font = Enum.Font.Gotham
+            item.TextSize = 14
+            item.TextColor3 = Color3.new(1,1,1)
+            item.BackgroundColor3 = Color3.fromRGB(60, 0, 100)
+            Instance.new("UICorner", item).CornerRadius = UDim.new(0, 6)
+            item.MouseButton1Click:Connect(function()
+                drop.Text = text .. ": " .. opt
+                callback(opt)
+                dropdownItems.Visible = false
+                open = false
+            end)
+        end
 
-						local fill = CreateInstance("Frame", {
-							Size = UDim2.new((default - min)/(max - min), 0, 1, 0),
-							BackgroundColor3 = Color3.fromRGB(0, 170, 255),
-							BorderSizePixel = 0,
-							Parent = slider
-						})
-						CreateInstance("UICorner", { CornerRadius = UDim.new(0, 6), Parent = fill })
+        drop.MouseButton1Click:Connect(function()
+            open = not open
+            dropdownItems.Visible = open
+        end)
+    end
 
-						slider.MouseButton1Down:Connect(function()
-							local con
-							con = game:GetService("RunService").RenderStepped:Connect(function()
-								local rel = (Mouse.X - slider.AbsolutePosition.X) / slider.AbsoluteSize.X
-								rel = math.clamp(rel, 0, 1)
-								fill.Size = UDim2.new(rel, 0, 1, 0)
-								local value = math.floor((min + (max - min) * rel) + 0.5)
-								sliderLabel.Text = text .. ": " .. tostring(value)
-								if callback then callback(value) end
-							end)
-							local up
-							up = UserInputService.InputEnded:Connect(function(input)
-								if input.UserInputType == Enum.UserInputType.MouseButton1 then
-									con:Disconnect()
-									up:Disconnect()
-								end
-							end)
-						end)
-					end,
-
-					AddTextbox = function(placeholder, callback)
-						local textbox = CreateInstance("TextBox", {
-							PlaceholderText = placeholder,
-							Size = UDim2.new(1, 0, 0, 30),
-							BackgroundColor3 = Color3.fromRGB(60, 60, 60),
-							TextColor3 = Color3.fromRGB(255, 255, 255),
-							Font = Enum.Font.Gotham,
-							TextSize = 14,
-							ClearTextOnFocus = true,
-							Parent = section
-						})
-						CreateInstance("UICorner", { CornerRadius = UDim.new(0, 6), Parent = textbox })
-						textbox.FocusLost:Connect(function(enterPressed)
-							if enterPressed and callback then
-								callback(textbox.Text)
-							end
-						end)
-					end,
-
-					AddDropdown = function(items, callback)
-						local dropdown = CreateInstance("TextButton", {
-							Text = "Selecionar...",
-							Size = UDim2.new(1, 0, 0, 30),
-							BackgroundColor3 = Color3.fromRGB(60, 60, 60),
-							TextColor3 = Color3.fromRGB(255, 255, 255),
-							Font = Enum.Font.Gotham,
-							TextSize = 14,
-							Parent = section
-						})
-						CreateInstance("UICorner", { CornerRadius = UDim.new(0, 6), Parent = dropdown })
-
-						local menu = CreateInstance("Frame", {
-							Size = UDim2.new(1, 0, 0, #items * 25),
-							BackgroundColor3 = Color3.fromRGB(50, 50, 50),
-							Visible = false,
-							Parent = dropdown
-						})
-						CreateInstance("UICorner", { CornerRadius = UDim.new(0, 6), Parent = menu })
-						CreateInstance("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Parent = menu })
-
-						for _, item in pairs(items) do
-							local option = CreateInstance("TextButton", {
-								Text = item,
-								Size = UDim2.new(1, 0, 0, 25),
-								BackgroundColor3 = Color3.fromRGB(70, 70, 70),
-								TextColor3 = Color3.fromRGB(255, 255, 255),
-								Font = Enum.Font.Gotham,
-								TextSize = 14,
-								Parent = menu
-							})
-							option.MouseButton1Click:Connect(function()
-								dropdown.Text = item
-								menu.Visible = false
-								if callback then callback(item) end
-							end)
-						end
-
-						dropdown.MouseButton1Click:Connect(function()
-							menu.Visible = not menu.Visible
-						end)
-					end
-				}
-			end
-		}
-	end
-
-	-- Botão flutuante fora da UI
-	local toggleButton = Instance.new("TextButton")
-	toggleButton.Name = "AbrirMenuButton"
-	toggleButton.Text = "🧊 Abrir Menu"
-	toggleButton.Size = UDim2.new(0, 120, 0, 35)
-	toggleButton.Position = UDim2.new(0, 10, 0, 10)
-	toggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-	toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-	toggleButton.Font = Enum.Font.Gotham
-	toggleButton.TextSize = 16
-	toggleButton.BorderSizePixel = 0
-	toggleButton.BackgroundTransparency = 0.1
-	toggleButton.Active = true
-	toggleButton.Draggable = true
-	toggleButton.Parent = CoreGui
-
-	toggleButton.MouseButton1Click:Connect(function()
-		screenGui.Enabled = not screenGui.Enabled
-	end)
-
-	return BonitaUI
+    return tabAPI
 end
 
-return BonitaUI
+return Library
